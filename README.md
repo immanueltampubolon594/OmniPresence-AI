@@ -26,95 +26,7 @@ OmniPresence-AI is built in **six decoupled layers**. The critical design decisi
 layer ②: video capture, model inference, and stream delivery each run on their **own
 thread**, communicating only through Redis queues. No layer ever blocks another.
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','fontSize':'13px','primaryColor':'#ffffff','primaryTextColor':'#1f2328','primaryBorderColor':'#d0d7de','lineColor':'#8c959f','textColor':'#1f2328','clusterBkg':'#f6f8fa','clusterBorder':'#d0d7de','edgeLabelBackground':'#ffffff'}}}%%
-flowchart TB
-
-    subgraph ING["&nbsp; ① &nbsp;INGESTION LAYER&nbsp; "]
-        direction LR
-        CAM1["<b>cam_alpha</b><br/>Room 1"]
-        CAM2["<b>cam_beta</b><br/>Room 2"]
-        CAM3["<b>cam_03 · cam_04</b><br/><i>hot-swappable</i>"]
-        CAM1 ~~~ CAM2 ~~~ CAM3
-    end
-
-    subgraph CORE["&nbsp; ② &nbsp;ASYNC VISION CORE &nbsp;·&nbsp; 3-Thread Redis Pipeline&nbsp; "]
-        direction LR
-        TC["<b>THREAD 1</b><br/>CAPTURE<br/><br/>non-blocking<br/>frame grabber"]
-        RQ1[("<b>raw:frames</b><br/>MAXLEN = 4<br/><i>back-pressure</i>")]
-        TI["<b>THREAD 2</b><br/>INFERENCE<br/><br/>YOLOv8n-pose<br/>+ ByteTrack"]
-        RQ2[("<b>telemetry:state</b><br/>live JSON<br/><i>snapshot</i>")]
-        TB["<b>THREAD 3</b><br/>BROADCAST<br/><br/>MJPEG multipart<br/>encoder"]
-        TC --> RQ1 --> TI --> RQ2 --> TB
-    end
-
-    subgraph INTEL["&nbsp; ③ &nbsp;SPATIAL INTELLIGENCE ENGINE&nbsp; "]
-        direction LR
-        ZN["<b>Zone Resolver</b><br/>cv2.pointPolygonTest<br/>polygon hit-test"]
-        ER["<b>Ergonomics Engine</b><br/>17-keypoint posture<br/>SLOUCH · CERVICAL_STRAIN"]
-        DW["<b>Dwell Aggregator</b><br/>per-station duration<br/>occupancy rate"]
-        ZN --> ER --> DW
-    end
-
-    subgraph SVC["&nbsp; ④ &nbsp;FASTAPI SERVICE LAYER&nbsp; "]
-        direction LR
-        EP1["<b>/stream</b><br/>video_feed/{cam}"]
-        EP2["<b>/telemetry</b><br/>live"]
-        EP3["<b>/analytics</b><br/>report · CSV export"]
-        EP4["<b>/zones</b><br/>calibration CRUD"]
-        EP1 ~~~ EP2 ~~~ EP3 ~~~ EP4
-    end
-
-    subgraph DATA["&nbsp; ⑤ &nbsp;PERSISTENCE &amp; EXECUTIVE REPORTING&nbsp; "]
-        direction LR
-        DB[("<b>SQLite</b><br/>incidents<br/>audit_log")]
-        PDF["<b>ReportLab</b><br/>Executive PDF<br/><i>auto text-wrap</i>"]
-        MAIL["<b>Gmail SMTP</b><br/>HTML + attachment"]
-        DB --> PDF --> MAIL
-    end
-
-    subgraph WEB["&nbsp; ⑥ &nbsp;NEXT.JS 14 COMMAND CENTER&nbsp; "]
-        direction LR
-        UI2["<b>Dual Viewport</b><br/>MJPEG split-screen"]
-        UI1["<b>KPI Grid</b><br/>1s live poll"]
-        UI3["<b>Recharts</b><br/>dwell · occupancy"]
-        UI4["<b>Zone Calibrator</b><br/>canvas polygon editor"]
-        UI2 ~~~ UI1 ~~~ UI3 ~~~ UI4
-    end
-
-    CAM1 --> TC
-    CAM2 --> TC
-    CAM3 -.-> TC
-
-    TI  -->|"keypoints + track IDs"| ZN
-    ER  -.->|"incident"| DB
-
-    TB  --> EP1
-    RQ2 --> EP2
-    DW  --> EP3
-    MAIL -.-> EP3
-
-    EP1 --> UI2
-    EP2 --> UI1
-    EP3 --> UI3
-    EP4 <-.->|"polygon JSON"| UI4
-
-    classDef thread fill:#cffafe,stroke:#0891b2,stroke-width:2px,color:#0c4a56
-    classDef store  fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#713f12
-    classDef intel  fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#4c1d95
-    classDef api    fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
-    classDef ui     fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#14532d
-    classDef cam    fill:#ffffff,stroke:#8c959f,stroke-width:1.5px,color:#1f2328
-    classDef rep    fill:#ffedd5,stroke:#ea580c,stroke-width:1.5px,color:#7c2d12
-
-    class TC,TI,TB thread
-    class RQ1,RQ2,DB store
-    class ZN,ER,DW intel
-    class EP1,EP2,EP3,EP4 api
-    class UI1,UI2,UI3,UI4 ui
-    class CAM1,CAM2,CAM3 cam
-    class PDF,MAIL rep
-```
+<img src="docs/arch_diagram.png" alt="OmniPresence-AI System Architecture" width="100%"/>
 
 ---
 
@@ -161,53 +73,7 @@ The dashboard keeps working at reduced throughput; nothing crashes.
 
 How a single photon of light becomes a number on the dashboard:
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','fontSize':'13px','primaryColor':'#ffffff','primaryTextColor':'#1f2328','primaryBorderColor':'#d0d7de','lineColor':'#8c959f','textColor':'#1f2328','actorBkg':'#dbeafe','actorBorder':'#2563eb','actorTextColor':'#1e3a8a','actorLineColor':'#c9d1d9','signalColor':'#57606a','signalTextColor':'#1f2328','labelBoxBkg':'#ffffff','labelBoxBorderColor':'#d0d7de','labelTextColor':'#1f2328','loopTextColor':'#1f2328','noteBkgColor':'#fef3c7','noteBorderColor':'#d97706','noteTextColor':'#713f12','sequenceNumberColor':'#ffffff'}}}%%
-sequenceDiagram
-    autonumber
-    participant CV as 🎥 OpenCV Source
-    participant T1 as 🧵 Thread 1<br/>CAPTURE
-    participant R as 🔴 Redis 3.0<br/>(protocol=2)
-    participant T2 as 🧵 Thread 2<br/>INFERENCE
-    participant T3 as 🧵 Thread 3<br/>BROADCAST
-    participant API as 🚀 FastAPI
-    participant UI as 🖥️ Dashboard
-
-    rect rgb(224, 247, 250)
-    note over T1,R: Producer — never blocks on inference
-    loop every frame
-        CV->>T1: read() raw BGR frame
-        T1->>R: LPUSH raw:frames (JPEG bytes)
-        T1->>R: LTRIM 0..3 — drop stale frames
-    end
-    end
-
-    rect rgb(226, 237, 255)
-    note over T2,R: Consumer — the only GPU/CPU-heavy stage
-    loop worker loop
-        R-->>T2: BRPOP raw:frames
-        T2->>T2: YOLOv8n-pose → 17 keypoints
-        T2->>T2: ByteTrack ID association
-        T2->>T2: pointPolygonTest → zone occupancy
-        T2->>T2: Ergonomics score + incident check
-        T2->>R: SET telemetry:state (JSON)
-        T2->>R: LPUSH processed:frames (annotated)
-    end
-    end
-
-    rect rgb(243, 232, 255)
-    note over T3,UI: Delivery — decoupled from inference FPS
-    R-->>T3: BRPOP processed:frames
-    T3->>API: yield multipart/x-mixed-replace
-    API-->>UI: MJPEG stream (continuous)
-    UI->>API: GET /telemetry/live (1s poll)
-    API->>R: GET telemetry:state
-    R-->>API: JSON snapshot
-    API-->>UI: occupancy · FPS · ergonomics
-    end
-
-    note over T1,UI: ⚠️ Redis unreachable → engine auto-degrades<br/>to single-thread synchronous mode. Zero downtime.
-```
+<img src="docs/sequence_diagram.png" alt="Request Lifecycle Sequence Diagram" width="100%"/>
 
 ---
 
@@ -263,13 +129,9 @@ OmniPresence-AI/
 │       └── types/
 │           └── telemetry.ts          # Shared API contract types
 │
-├── data/
-│   ├── videos/                       # per-camera source footage
-│   ├── zones/                        # calibrated polygon JSON
-│   └── omnipresence.db               # SQLite store
-│
-├── models/
-│   └── yolov8n-pose.pt
+├── docs/
+│   ├── arch_diagram.png              # System architecture diagram
+│   └── sequence_diagram.png          # Request lifecycle diagram
 │
 └── requirements.txt
 ```

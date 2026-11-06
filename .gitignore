@@ -1,0 +1,43 @@
+# ───── Dataset & data runtime ─────
+data/
+database/*.db
+*.db
+*.sqlite3
+
+# ───── Secrets ─────
+.env
+.env.*
+!.env.example
+
+# ───── Python ─────
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# ───── Model weights ─────
+*.pt
+*.onnx
+
+# ───── Media & output ─────
+*.mp4
+*.avi
+*.mov
+reports/
+exports/
+*.pdf
+runs/
+
+# ───── Node / Next.js ─────
+node_modules/
+.next/
+out/
+.vercel
+npm-debug.log*
+
+# ───── Editor & OS ─────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

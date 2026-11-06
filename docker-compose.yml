@@ -1,0 +1,28 @@
+services:
+  # Service 1: Backend AI & API (FastAPI)
+  omnipresence-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: omnipresence_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./reports:/app/reports
+      - ./configs:/app/configs
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # Service 2: Modern Web Dashboard (Next.js 14)
+  omnipresence-frontend:
+    build:
+      context: ./web-frontend
+      dockerfile: Dockerfile
+    container_name: omnipresence_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - omnipresence-backend
+    restart: unless-stopped
